@@ -366,24 +366,52 @@ class FreshBooksClient:
         
         return self._make_request("PUT", endpoint, data=data)
     
+    def mark_invoice_paid(self, invoice_id: str, payment_date: str, amount: str) -> Dict:
+        """
+        Mark an invoice as paid by creating a payment record
+
+        Args:
+            invoice_id: The ID of the invoice to mark as paid
+            payment_date: Date of payment in YYYY-MM-DD format
+            amount: Payment amount as a string (e.g., "1500.00")
+
+        Returns:
+            Dictionary containing the response data
+        """
+        endpoint = f"/accounting/account/{self.account_id}/payments/payments"
+
+        data = {
+            "payment": {
+                "invoiceid": invoice_id,
+                "amount": {
+                    "amount": amount,
+                    "code": "USD"
+                },
+                "date": payment_date,
+                "type": "Check"
+            }
+        }
+
+        return self._make_request("POST", endpoint, data=data)
+
     def delete_invoice(self, invoice_id: str) -> Dict:
         """
         Delete/void an invoice by setting its visibility state to deleted
-        
+
         Args:
             invoice_id: The ID of the invoice to delete
-            
+
         Returns:
             Dictionary containing the response data
         """
         endpoint = f"/accounting/account/{self.account_id}/invoices/invoices/{invoice_id}"
-        
+
         data = {
             "invoice": {
                 "vis_state": 1  # 1 = deleted
             }
         }
-        
+
         return self._make_request("PUT", endpoint, data=data)
     
     def get_clients(self, per_page: int = 100) -> Dict:
@@ -603,6 +631,24 @@ def send_invoice(invoice_id: str, humanApproved: bool = False, account_id: str =
     """
     client = create_freshbooks_client(account_id, access_token)
     return client.send_invoice(invoice_id, humanApproved=humanApproved)
+
+
+def mark_invoice_paid(invoice_id: str, payment_date: str, amount: str, account_id: str = None, access_token: str = None) -> Dict:
+    """
+    Mark an invoice as paid
+
+    Args:
+        invoice_id: The ID of the invoice to mark as paid
+        payment_date: Date of payment in YYYY-MM-DD format
+        amount: Payment amount as a string (e.g., "1500.00")
+        account_id: Optional account ID override
+        access_token: Optional access token override
+
+    Returns:
+        Dictionary containing the response data
+    """
+    client = create_freshbooks_client(account_id, access_token)
+    return client.mark_invoice_paid(invoice_id, payment_date, amount)
 
 
 def delete_invoice(invoice_id: str, account_id: str = None, access_token: str = None) -> Dict:
