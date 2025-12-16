@@ -277,20 +277,25 @@ class FreshBooksClient:
         
         return self._make_request("GET", endpoint, params=params)
     
-    def create_invoice(self, client_email: str, items: List[Dict]) -> Dict:
+    def create_invoice(self, client_email: str, items: List[Dict],
+                       notes: Optional[str] = None, terms: Optional[str] = None,
+                       po_number: Optional[str] = None) -> Dict:
         """
         Create a new invoice for a client
-        
+
         Args:
             client_email: Email address of the client
             items: List of invoice line items, each containing:
                    - name: Item description
                    - qty: Quantity (as string)
                    - unit_cost: Dict with 'amount' (string) and 'code' (e.g., 'USD')
-                   
+            notes: Optional notes for the client that appear on the invoice
+            terms: Optional payment terms that appear on the invoice
+            po_number: Optional purchase order number (can be used as a reference field)
+
         Returns:
             Dictionary containing the created invoice data
-            
+
         Example:
             items = [
                 {
@@ -302,22 +307,28 @@ class FreshBooksClient:
                     }
                 }
             ]
+            invoice = client.create_invoice(
+                "client@example.com",
+                items,
+                notes="Thank you for your business!",
+                po_number="REF-2024-001"
+            )
         """
         # First, get the client ID from email
         client_data = self.get_client_by_email(client_email)
-        
+
         if not client_data.get("response", {}).get("result", {}).get("clients"):
             raise ValueError(f"No client found with email: {client_email}")
-        
+
         clients = client_data["response"]["result"]["clients"]
         if len(clients) > 1:
             raise ValueError(f"Multiple clients found with email: {client_email}")
-        
+
         client_id = clients[0]["id"]
-        
+
         # Create the invoice
         endpoint = f"/accounting/account/{self.account_id}/invoices/invoices"
-        
+
         invoice_data = {
             "invoice": {
                 "customerid": client_id,
@@ -329,23 +340,37 @@ class FreshBooksClient:
                 "send_now": False
             }
         }
-        
+
+        # Add optional fields if provided
+        if notes:
+            invoice_data["invoice"]["notes"] = notes
+        if terms:
+            invoice_data["invoice"]["terms"] = terms
+        if po_number:
+            invoice_data["invoice"]["po_number"] = po_number
+
         return self._make_request("POST", endpoint, data=invoice_data)
     
-    def send_invoice(self, invoice_id: str, humanApproved: bool = False) -> Dict:
+    def send_invoice(self, invoice_id: str, humanApproved: bool = False,
+                     email_include_pdf: bool = True, email_recipients: Optional[List[str]] = None,
+                     custom_subject: Optional[str] = None, custom_body: Optional[str] = None) -> Dict:
         """
         Send an invoice to the client via email
-        
-        WARNING: This sends the invoice immediately. Requires explicit 
+
+        WARNING: This sends the invoice immediately. Requires explicit
         human approval via humanApproved=True parameter.
-        
+
         Args:
             invoice_id: The ID of the invoice to send
             humanApproved: Must be explicitly set to True after getting human approval
-            
+            email_include_pdf: Whether to attach a PDF copy of the invoice (default: True)
+            email_recipients: List of email addresses to send to. If None, uses invoice's primary contact
+            custom_subject: Optional custom email subject line
+            custom_body: Optional custom email body text
+
         Returns:
             Dictionary containing the response data
-            
+
         Raises:
             ValueError: If humanApproved is not True
         """
@@ -355,15 +380,35 @@ class FreshBooksClient:
                 "Set humanApproved=True only after receiving explicit permission from the user. "
                 "Example: client.send_invoice(invoice_id, humanApproved=True)"
             )
-            
+
+        # Get invoice details if email_recipients not provided
+        if email_recipients is None:
+            invoice_data = self.get_invoice(invoice_id)
+            invoice = invoice_data.get("response", {}).get("result", {}).get("invoice", {})
+            contacts = invoice.get("contacts", [])
+            if contacts:
+                email_recipients = [contacts[0].get("email")]
+            else:
+                raise ValueError(f"No email recipients found for invoice {invoice_id}")
+
         endpoint = f"/accounting/account/{self.account_id}/invoices/invoices/{invoice_id}"
-        
+
         data = {
             "invoice": {
+                "email_recipients": email_recipients,
+                "email_include_pdf": email_include_pdf,
                 "action_email": True
             }
         }
-        
+
+        # Add custom email text if provided
+        if custom_subject or custom_body:
+            data["invoice"]["invoice_customized_email"] = {}
+            if custom_subject:
+                data["invoice"]["invoice_customized_email"]["subject"] = custom_subject
+            if custom_body:
+                data["invoice"]["invoice_customized_email"]["body"] = custom_body
+
         return self._make_request("PUT", endpoint, data=data)
     
     def mark_invoice_paid(self, invoice_id: str, payment_date: str, amount: str) -> Dict:
@@ -600,10 +645,26 @@ def get_client(organization: str = None, email: str = None, account_id: str = No
     return client.get_client(organization, email)
 
 
-def create_invoice(client_email: str, items: List[Dict], account_id: str = None, access_token: str = None) -> Dict:
-    """Create a new invoice"""
+def create_invoice(client_email: str, items: List[Dict], notes: str = None,
+                   terms: str = None, po_number: str = None,
+                   account_id: str = None, access_token: str = None) -> Dict:
+    """
+    Create a new invoice
+
+    Args:
+        client_email: Email address of the client
+        items: List of invoice line items
+        notes: Optional notes for the client that appear on the invoice
+        terms: Optional payment terms that appear on the invoice
+        po_number: Optional purchase order number (can be used as a reference field)
+        account_id: Optional account ID override
+        access_token: Optional access token override
+
+    Returns:
+        Dictionary containing the created invoice data
+    """
     client = create_freshbooks_client(account_id, access_token)
-    return client.create_invoice(client_email, items)
+    return client.create_invoice(client_email, items, notes=notes, terms=terms, po_number=po_number)
 
 
 def create_client(email: str, first_name: str, last_name: str, organization: str, 
@@ -613,24 +674,32 @@ def create_client(email: str, first_name: str, last_name: str, organization: str
     return client.create_client(email, first_name, last_name, organization)
 
 
-def send_invoice(invoice_id: str, humanApproved: bool = False, account_id: str = None, access_token: str = None) -> Dict:
+def send_invoice(invoice_id: str, humanApproved: bool = False, email_include_pdf: bool = True,
+                 email_recipients: Optional[List[str]] = None, custom_subject: Optional[str] = None,
+                 custom_body: Optional[str] = None, account_id: str = None, access_token: str = None) -> Dict:
     """
     Send an invoice via email
-    
+
     Args:
         invoice_id: The ID of the invoice to send
         humanApproved: Must be explicitly set to True after getting human approval
+        email_include_pdf: Whether to attach a PDF copy of the invoice (default: True)
+        email_recipients: List of email addresses to send to. If None, uses invoice's primary contact
+        custom_subject: Optional custom email subject line
+        custom_body: Optional custom email body text
         account_id: Optional account ID override
         access_token: Optional access token override
-        
+
     Returns:
         Dictionary containing the response data
-        
+
     Raises:
         ValueError: If humanApproved is not True
     """
     client = create_freshbooks_client(account_id, access_token)
-    return client.send_invoice(invoice_id, humanApproved=humanApproved)
+    return client.send_invoice(invoice_id, humanApproved=humanApproved, email_include_pdf=email_include_pdf,
+                               email_recipients=email_recipients, custom_subject=custom_subject,
+                               custom_body=custom_body)
 
 
 def mark_invoice_paid(invoice_id: str, payment_date: str, amount: str, account_id: str = None, access_token: str = None) -> Dict:
