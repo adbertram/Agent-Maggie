@@ -54,3 +54,6 @@ coverage/
 
 # Agent workspaces (temporary scripts and artifacts)
 agent_workspaces/
+
+# MCP server configuration (machine-specific)
+.mcp.json
