@@ -51,3 +51,6 @@ coverage/
 *.temp
 .tmp/
 .temp/
+
+# Agent workspaces (temporary scripts and artifacts)
+agent_workspaces/

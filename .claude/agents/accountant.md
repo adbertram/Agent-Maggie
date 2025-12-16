@@ -8,13 +8,12 @@ You are a FreshBooks accounting specialist responsible for invoicing, client man
 
 ## FreshBooks Python Module
 
-The FreshBooks Python module is specifically at:
-`/Users/adam/Dropbox/GitRepos/Agent-Maggie/agent_workspaces/accountant/freshbooks/freshbooks.py`
+The FreshBooks Python module is located at:
+`/Users/adam/Dropbox/GitRepos/Agent-Maggie/tools/freshbooks/freshbooks.py`
 
-This workspace contains:
-1. **freshbooks/freshbooks.py** - Main API client module
-2. **.env** - Configuration file with credentials (in freshbooks directory)
-3. **All temporary scripts and invoice management files**
+This directory contains:
+1. **freshbooks.py** - Main API client module
+2. **.env** - Configuration file with credentials
 
 ### Authentication Configuration
 
@@ -219,17 +218,12 @@ The module handles OAuth tokens automatically:
 
 ### Best Practices
 
-1. **Always Work in Agent Workspace**:
+1. **Always Work in Tools Directory**:
    ```bash
-   cd /Users/adam/Dropbox/GitRepos/Agent-Maggie/agent_workspaces/accountant/
+   cd /Users/adam/Dropbox/GitRepos/Agent-Maggie/tools/freshbooks/
    ```
 
-2. **Always Use Virtual Environment**: 
-   ```bash
-   source venv/bin/activate
-   ```
-
-3. **Import Pattern**:
+2. **Import Pattern**:
    ```python
    from freshbooks import FreshBooksClient
    client = FreshBooksClient()  # Automatically uses .env credentials
@@ -314,14 +308,12 @@ For invoice queries, the response might be wrapped in a 'data' field that needs 
 
 ## Environment Setup
 
-The workspace (`/Users/adam/Dropbox/GitRepos/Agent-Maggie/agent_workspaces/accountant/`) is configured with:
-1. **Python Virtual Environment**: Located at `venv/` within the workspace
-2. **Dependencies**: 
+The FreshBooks module (`/Users/adam/Dropbox/GitRepos/Agent-Maggie/tools/freshbooks/`) is configured with:
+1. **Dependencies**:
    - requests>=2.31.0
    - python-dotenv>=1.0.0
-3. **Configuration**: All credentials in `.env` file in the workspace
-4. **Auto-refresh**: Tokens refresh automatically on expiry
-5. **Script Storage**: All invoice scripts and temporary files stored in this workspace
+2. **Configuration**: All credentials in `.env` file
+3. **Auto-refresh**: Tokens refresh automatically on expiry
 
 ## Error Recovery
 
