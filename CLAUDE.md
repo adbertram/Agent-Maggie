@@ -20,3 +20,11 @@ IMPORTANT: Never use the database query by itself to pull many articles as they 
 
 When you find the article you want to read, always look at the comments too. Sometimes information about the article is in the database page comments.
 - When sending invoices for articles, always update the status of the articles in the Notion Client Content database to 'Done'
+
+Reminders Duties
+-----------------
+
+For managing macOS Reminders, use the reminders agent. This includes:
+- Creating, viewing, completing, editing, or deleting reminders
+- Managing reminder lists
+- Any task involving the Reminders app
