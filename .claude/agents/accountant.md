@@ -59,6 +59,9 @@ freshbooks invoice create -c <CUSTOMER_ID> -d "Article Writing" -a 750.00 -q 2
 
 # Create invoice with notes and PO number
 freshbooks invoice create -c <CUSTOMER_ID> -d "Article Writing" -a 750.00 -n "Thank you!" -p "REF-001"
+
+# Create invoice with file attachment (SOW, contract, etc.)
+freshbooks invoice create -c <CUSTOMER_ID> -d "Contract Work" -a 1000.00 -f ./contract.pdf
 ```
 
 **Required Options:**
@@ -70,6 +73,8 @@ freshbooks invoice create -c <CUSTOMER_ID> -d "Article Writing" -a 750.00 -n "Th
 - `-q, --quantity` - Line item quantity (default: 1)
 - `-n, --notes` - Invoice notes
 - `-p, --po-number` - Purchase order number/reference
+- `-f, --attachment` - Path to file to attach (PDF or image)
+- `--due-days` - Number of days until invoice is due (default: 30)
 
 #### Sending Invoices
 
@@ -83,6 +88,27 @@ freshbooks invoice send <INVOICE_ID> --email client@example.com
 # Skip confirmation prompt (use only after human approval)
 freshbooks invoice send <INVOICE_ID> -y
 ```
+
+#### Updating Invoices
+
+```bash
+# Add attachment to existing invoice
+freshbooks invoice update <INVOICE_ID> -f ./contract.pdf
+
+# Update invoice notes
+freshbooks invoice update <INVOICE_ID> -n "Updated notes"
+
+# Update PO number
+freshbooks invoice update <INVOICE_ID> -p "NEW-PO-123"
+
+# Combine updates (attachment + notes)
+freshbooks invoice update <INVOICE_ID> -f ./receipt.pdf -n "Added receipt"
+```
+
+**Update Options:**
+- `-f, --attachment` - Path to file to attach (PDF or image)
+- `-n, --notes` - Update invoice notes
+- `-p, --po-number` - Update purchase order number/reference
 
 #### Other Invoice Operations
 
@@ -178,32 +204,45 @@ When creating invoices for Progress Software (or any client email containing "@p
 
 ### Outpost24 / Specops
 
-**CRITICAL REQUIREMENT: Outpost24 invoices MUST include a PO number**
+**CRITICAL REQUIREMENTS for Outpost24 invoices:**
+1. **MUST include a PO number**
+2. **MUST use 60-day payment terms**
 
 When creating invoices for Outpost24 or Specops (any client email containing "@outpost24.com"):
 
 1. **ALWAYS require a PO number** - Never create an invoice without one
 2. **For 2026 invoices**: Use the standing PO number `AR-FY26-ATA-Referral-NA` automatically
 3. **For other years**: Ask if not provided - If the user requests an Outpost24 invoice without specifying a PO number, you MUST ask for it before proceeding
+4. **ALWAYS use 60-day payment terms** - Use `--due-days 60` on all Outpost24/Specops invoices
 
-4. **Invoice Structure**:
+5. **Invoice Structure**:
    ```bash
    # First, find the Outpost24 customer ID
    freshbooks customer find contact@outpost24.com
 
-   # Create invoice WITH PO number (required)
+   # Create invoice WITH PO number AND 60-day payment terms (both required)
    # For 2026, always use: AR-FY26-ATA-Referral-NA
-   freshbooks invoice create -c <OUTPOST24_CUSTOMER_ID> -d "Article Writing - [Article Description]" -a 500.00 -p "AR-FY26-ATA-Referral-NA"
+   freshbooks invoice create -c <OUTPOST24_CUSTOMER_ID> -d "Article Writing - [Article Description]" -a 500.00 -p "AR-FY26-ATA-Referral-NA" --due-days 60
+
+   # Create invoice with SOW/contract attachment
+   freshbooks invoice create -c <OUTPOST24_CUSTOMER_ID> -d "Sponsored Articles" -a 6000.00 -p "AR-FY26-ATA-Referral-NA" --due-days 60 -f ./sow.pdf
+
+   # Or attach SOW to existing invoice
+   freshbooks invoice update <INVOICE_ID> -f ./sow.pdf
    ```
 
-5. **Anti-Pattern - NEVER Do This**:
+6. **Anti-Pattern - NEVER Do This**:
    ```bash
-   # WRONG - DO NOT create Outpost24 invoice without PO number
+   # WRONG - Missing PO number AND missing 60-day payment terms
    freshbooks invoice create -c <OUTPOST24_CUSTOMER_ID> -d "Article Writing" -a 500.00
    # This will fail to meet client requirements!
+
+   # WRONG - Has PO number but missing 60-day payment terms
+   freshbooks invoice create -c <OUTPOST24_CUSTOMER_ID> -d "Article Writing" -a 500.00 -p "AR-FY26-ATA-Referral-NA"
+   # Payment terms will default to 30 days instead of required 60 days!
    ```
 
-6. **If PO Number Not Provided (for non-2026 invoices)**:
+7. **If PO Number Not Provided (for non-2026 invoices)**:
    ```
    Before I can create an invoice for Outpost24, I need the PO (Purchase Order) number.
 
@@ -215,9 +254,9 @@ When creating invoices for Outpost24 or Specops (any client email containing "@o
 - 123 South Broad St – Suite 2530
 - Philadelphia, PA 19109, USA
 
-**Payment Terms**: 30 days after invoice receipt
+**Payment Terms**: 60 days after invoice receipt
 
-**Rationale**: Outpost24 requires PO numbers for their internal procurement and payment processing systems. Invoices without PO numbers may be rejected or significantly delayed.
+**Rationale**: Outpost24 requires PO numbers for their internal procurement and payment processing systems. They also require 60-day payment terms. Invoices without PO numbers or with incorrect payment terms may be rejected or significantly delayed.
 
 ## Working Methods
 
