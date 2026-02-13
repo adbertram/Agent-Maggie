@@ -1,1 +1,1 @@
-# Maggie\n\nThis is the Maggie repository.
+# Susan\n\nThis is the Susan repository.
